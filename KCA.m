@@ -50,17 +50,17 @@ G2Qmat(2,2) = sum( (g2sd ./ (g2fd + g2sd)) .* (g2sd ./ (1-mixingPrct)) );
 %
 %% Now assemble the combined Qmat for all transitions
 
-N=4;
+N=6;
 Qmat=eye(N);
-Qmat(2,2)=G2Qmat(2,2);
-Qmat(2,3)=G2Qmat(2,1);
-Qmat(3,2)=G2Qmat(1,2);
-
-Qmat(3,3)=1-(sum(Qmat(2,3)+Qmat(4,3)));
+Qmat(3,3)=G2Qmat(2,2);
+Qmat(3,4)=G2Qmat(2,1);
+Qmat(4,3)=G2Qmat(1,2);
+Qmat(4,4)=G2Qmat(1,1);
 
 for jj = 1:N
     Qmat(:,jj) = Qmat(:,jj) ./ sum(Qmat(:,jj));
 end
+Qmat
 
 AllinputPos=colonyIDs;
 for c = 1:length(AllinputPos)
@@ -126,23 +126,25 @@ for ctrItr = 1:numItr
         G1thr=10;
         Megthr=100;
         P1Hthr=75;
+        MThr =150;
         %States= [G1/2H G2H LES P1H];
         for i = 1:length(bdryCells)-1
-            if( colony.gata1(i) <= Megthr )
                 for j = i+1:length(bdryCells)
-                    if( colony.gata1(j) <= Megthr )
                         %Get the state of iCell
                         
                         
                         g2=colony.gata2(i)+1;
                         iG2prob=[g2fd(g2) g2sd(g2)]./(g2fd(g2)+g2sd(g2));
-                        
-                        if (colony.pu1(i) > P1Hthr(1))
-                            iState = [0 0 0 1]; %P1H
+                        if colony.gata1(i) >= Megthr
+                            iState = [1 0 0 0 0 0];
+                        elseif colony.pu1(i) >= MThr
+                            iState = [0 0 0 0 0 1];
+                        elseif (colony.pu1(i) > P1Hthr)
+                            iState = [0 0 0 0 1 0]; %P1H
                         elseif( colony.gata1(i) >= G1thr)
-                            iState = [1 0 0 0]; %G1H
+                            iState = [0 1 0 0 0 0]; %G1H
                         else
-                            iState2=[ 0 iG2prob(2) iG2prob(1) 0];
+                            iState2=[0 0 iG2prob(2) iG2prob(1) 0 0];
                             iState=iState2./(sum(iState2));
                         end
                         
@@ -150,15 +152,19 @@ for ctrItr = 1:numItr
                         
                         g2=colony.gata2(j)+1;
                         
-                        iG2prob=[g2fd(g2) g2sd(g2)]./(g2fd(g2)+g2sd(g2));
+                        jG2prob=[g2fd(g2) g2sd(g2)]./(g2fd(g2)+g2sd(g2));
                         
-                        if (colony.pu1(j) > P1Hthr(1))
-                            jState = [0 0 0 1]; %P1H
+                        if colony.gata1(j) >= Megthr
+                            jState = [1 0 0 0 0 0];
+                        elseif colony.pu1(j) >= MThr
+                            jState = [0 0 0 0 0 1];
+                        elseif (colony.pu1(j) > P1Hthr)
+                            jState = [0 0 0 0 1 0]; %P1H
                         elseif( colony.gata1(j) >= G1thr)
-                            jState = [1 0 0 0]; %G1H
+                            jState = [0 1 0 0 0 0]; %G1H
                         else
-                            iState2=[ 0 iG2prob(2) iG2prob(1) 0];
-                            jState=iState2./(sum(iState2));
+                            jState2=[0 0 jG2prob(2) jG2prob(1) 0 0];
+                            jState=jState2./(sum(jState2));
                         end
                         
                         
@@ -170,39 +176,40 @@ for ctrItr = 1:numItr
                         end
                     end
                 end
-            end
-        end
+            
+        
         %Get the FISH counts at the boundary
         for i = 1:length(bdryCells)
-            if( colony.gata1(i) <= Megthr )
                 
                 iCell = bdryCells(i);
                 cellThrownOut = 0;
-                p1=colony.pu1(i)+1;
                 g2=colony.gata2(i)+1;
                 
-                iP1prob=[fd(p1) sd(p1)]./(fd(p1)+sd(p1));
                 iG2prob=[g2fd(g2) g2sd(g2)]./(g2fd(g2)+g2sd(g2));
                 
-                if (colony.pu1(i) > P1Hthr(1))
-                    iState = [0 0 0 1]; %P1H
-                elseif( colony.gata1(i) >= G1thr)
-                    iState = [1 0 0 0]; %G1H
-                else
-                    iState2=[ 0 iG2prob(2) iG2prob(1) 0];
-                    iState=iState2./(sum(iState2));
-                end
-                ssDist = ssDist + iState;
+                        if colony.gata1(i) >= Megthr
+                            iState = [1 0 0 0 0 0];
+                        elseif colony.pu1(i) >= MThr
+                            iState = [0 0 0 0 0 1];
+                        elseif (colony.pu1(i) > P1Hthr)
+                            iState = [0 0 0 0 1 0]; %P1H
+                        elseif( colony.gata1(i) >= G1thr)
+                            iState = [0 1 0 0 0 0]; %G1H
+                        else
+                            iState2=[0 0 iG2prob(2) iG2prob(1) 0 0];
+                            iState=iState2./(sum(iState2));
+                        end
+                        ssDist = ssDist + iState;
                 
                 ctrxx = ctrxx + 1;
                 AllFISHcounts(ctrxx) = colony.pu1(i);
                 AllFISHcounts(ctrxx) = colony.gata1(i);
                 AllFISHcounts(ctrxx) = colony.gata2(i);
                 AllFISHstate(ctrxx,:) = iState;
-            end
         end
         
     end
+    
     %Normalize
     ssDist = ssDist ./ sum(ssDist);
     emp_ssDist = ssDist;
@@ -215,14 +222,25 @@ for ctrItr = 1:numItr
     
     
     clear AllEigs AllStayRates sizemCorr2 AllmTrans AllmTransSignle avgmTrans
-    %Infer the rate from u = 1
+    %Infer the rate from u = 1:6
     intvPlot = 1;
     checkStore = 1;
+    %remove the Megs from the analysis in order to determine TMat
+    ssDist = ssDist(2:6);
+    
+    
     for i =1:intvPlot:6
+        %again remove the megs
+        txM = mCorr2Norm{i};
+        txM(1,:) = [];
+        txM(:,1) = [];
+        newQ = Qmat;
+        newQ(1,:) = [];
+        newQ(:,1) = [];
         
         %Infer the rates
-        ssDist = (inv(Qmat) * sum(mCorr2Norm{i})')';
-        mTmp =(inv(Qmat)*mCorr2Norm{i}*inv(Qmat')) ./ (sqrt(ssDist)' * sqrt(ssDist));
+        ssDist = (inv(newQ) * sum(txM)')';
+        mTmp =(inv(newQ)*txM*inv(newQ')) ./ (sqrt(ssDist)' * sqrt(ssDist));
         
         if ( sum(sum(isnan(mTmp))) == 0 )
             
@@ -230,7 +248,7 @@ for ctrItr = 1:numItr
             mTrans = (V *D.^(1/((2*i))) * V') .* (sqrt(ssDist)'* (1./sqrt(ssDist)));
             
             %Normalize
-            for jj = 1:N
+            for jj = 1:5
                 mTrans(:,jj) = mTrans(:,jj) ./ sum(mTrans(:,jj));
             end
             
@@ -266,11 +284,14 @@ for ctrItr = 1:numItr
     
 end
 %% Get out of source transitions probabilities
-for ii=1:numItr
+sz = size(allpredmTrans);
+numTrans = sz(2);
+for ii=1:numTrans
     for jj=1:6
         AllG2trans(ii,1,jj) = allpredmTrans{ii}{jj}(1,2);
         AllG2trans(ii,2,jj) = allpredmTrans{ii}{jj}(3,2);
         AllG2trans(ii,3,jj) = allpredmTrans{ii}{jj}(4,2);
+        AllG2trans(ii,4,jj) = allpredmTrans{ii}{jj}(5,2);
     end
 end
 
@@ -280,11 +301,12 @@ AllG2trans(AllG2trans<0)=0;
 
 AllG2trans=real(AllG2trans);
 
-for ii=1:numItr
+for ii=1:numTrans
     for jj=1:6
         AllLEStrans(ii,1,jj) = allpredmTrans{ii}{jj}(1,3);
         AllLEStrans(ii,2,jj) = allpredmTrans{ii}{jj}(2,3);
         AllLEStrans(ii,3,jj) = allpredmTrans{ii}{jj}(4,3);
+        AllLEStrans(ii,4,jj) = allpredmTrans{ii}{jj}(5,3);
     end
 end
 
@@ -294,11 +316,12 @@ AllLEStrans(AllLEStrans<0)=0;
 
 AllLEStrans=real(AllLEStrans);
 
-for ii=1:numItr
+for ii=1:numTrans
     for jj=1:6
         AllG1trans(ii,1,jj) = allpredmTrans{ii}{jj}(2,1);
         AllG1trans(ii,2,jj) = allpredmTrans{ii}{jj}(3,1);
         AllG1trans(ii,3,jj) = allpredmTrans{ii}{jj}(4,1);
+        AllG1trans(ii,4,jj) = allpredmTrans{ii}{jj}(5,1);
     end
 end
 
@@ -308,11 +331,12 @@ AllG1trans(AllG1trans<0)=0;
 
 AllG1trans=real(AllG1trans);
 
-for ii=1:numItr
+for ii=1:numTrans
     for jj=1:6
         AllP1trans(ii,1,jj) = allpredmTrans{ii}{jj}(1,4);
         AllP1trans(ii,2,jj) = allpredmTrans{ii}{jj}(2,4);
         AllP1trans(ii,3,jj) = allpredmTrans{ii}{jj}(3,4);
+        AllP1trans(ii,4,jj) = allpredmTrans{ii}{jj}(3,5);
     end
 end
 
@@ -379,15 +403,13 @@ end
 hold off
 
 %%
-%Plot the inferred rates for retaining the state of the parent cell
-%(diagonal entries) of the transition matrix.
 
 %Compute trans Mat
 clear predTransMat stdTransMat
 for u = 1:6
     
-    for iC = 1:N
-        for jC = 1:N
+    for iC = 1:5
+        for jC = 1:5
             %Get the element from store matrices
             for kk = 1:length(allpredmTrans)
                 thisElem(kk) = allpredmTrans{kk}{u}(iC,jC);
@@ -402,6 +424,8 @@ for u = 1:6
     
     
 end
+%Plot the inferred rates for retaining the state of the parent cell
+%(diagonal entries) of the transition matrix.
 
 figure
 hold on
@@ -412,16 +436,16 @@ incLim = 6;
 clear diagTMat diagTstd
 
 for u = 1:incLim %distance
-    for k = 1:N %state
+    for k = 1:5 %state
         diagTMat{k}(u) = real(predTransMat{u}(k,k));
         diagTstd{k}(u) = real(stdTransMat{u}(k,k));
     end
 end
 
-colors = {'r' 'g' [0.5 0.5 0.5] 'b','y'};
+colors = {'r' [0.8 0 0.7] [0.5 0.5 0.5] 'b' 'g'};
 
 ctrSubplot = 0;
-for kk = 1:N
+for kk = 1:5
     
     ctrSubplot = ctrSubplot + 1;
     
@@ -441,21 +465,40 @@ for kk = 1:N
     
     
 end
+%% 
 
 %Combine the first two distances u = 1 nad u=2  to get the rates with
 %lowest std
-for iC = 1:N
-    for jC= 1:N
+for iC = 1:5
+    for jC= 1:5
         [tmpVal tmpPos] = min([stdTransMat{1}(iC,jC) stdTransMat{2}(iC,jC)]);
-        combinedTransMat(iC,jC) = predTransMat{tmpPos}(iC,jC);
-        combinedStdMat(iC,jC) = stdTransMat{tmpPos}(iC,jC);
+        combinedTransMat(iC,jC) = real(predTransMat{tmpPos}(iC,jC));
+        combinedStdMat(iC,jC) = real(stdTransMat{tmpPos}(iC,jC));
     end
 end
+%remove negative entries
+combinedTransMat(combinedTransMat<0) = 0;
 
+%Normalize the transition matrix
+for jj = 1:5
+    combinedTransMat(:,jj) = combinedTransMat(:,jj) ./ sum(combinedTransMat(:,jj));
+end
+Qmat
+% Save the inferred transition matrix and the
+combinedTransMat
+combinedStdMat
+%% 
+save('C:\Users\Justin Wheat\Desktop\KCA_resubmission\transMatMean.mat','combinedTransMat');
+save('C:\Users\Justin Wheat\Desktop\KCA_resubmission\transMatSTD.mat','combinedStdMat');
+mssDist = mean(allssDist);
+mssDist(1)= [];
+save('C:\Users\Justin Wheat\Desktop\KCA_resubmission\SteadyStateDist.mat','mssDist');
+
+%% 
 
 % Show pairs at different distances
 %Plot the two-cell correlation matrix of sisters
-N=4;
+
 for u=1:6
     plotU =u; %Which u to plot
     %Change this to plot the two-cell correlation matrix of first cousins
