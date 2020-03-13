@@ -57,7 +57,7 @@ G2Qmat(2,2) = sum( (g2sd ./ (g2fd + g2sd)) .* (g2sd ./ (1-mixingPrct)) );
 %% Determine three cell correlations
 
 %Number of iterations for bootstrap
-numItr =5000;
+numItr =1000;
 
 
 clear allT11 allT22 allsizemCorr2 mCorr3 AllmCorr3
